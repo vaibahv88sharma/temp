@@ -1,0 +1,97 @@
+# Name: Import Solutions
+# Imports all solutions
+
+parameters:
+  d365master: true
+  portalcli: true
+  environmentname: ""
+  environmentconnection: ""
+  droppath: ""
+  solutionNameD365Master: ""
+  solutionNamePortalCli: ""
+  asyncOperation: ""
+  solutionDeploymentSettingsFile: ""
+  datetimeStampPipelineStartTime: ""
+  publishSourceAndTargetEnv: true
+
+steps:
+
+- task: PowerPlatformWhoAmi@2
+  displayName: "Print Power Platform Who Am I in ${{ parameters.environmentname }}"
+  inputs:
+    authenticationType: 'PowerPlatformSPN'
+    PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+
+# - task: PowerPlatformBackupEnvironment@2
+#   displayName: "Backup Environment ${{ parameters.environmentname }}"
+#   inputs:
+#     authenticationType: 'PowerPlatformSPN'
+#     PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+#     BackupLabel: 'Full Backup - $(Build.BuildNumber)'
+
+- task: PowerShell@2
+  displayName: "Print Directory Structure"
+  inputs:
+    targetType: 'inline'
+    script: |
+      # Write your PowerShell commands here.
+      Write-Output "-------------Pipeline.Workspace-----------------"
+      Get-ChildItem -Path '$(Pipeline.Workspace)' -recurse
+      Write-Output "-------------Build.StagingDirectory-----------------"
+      Get-ChildItem -Path '$(Build.StagingDirectory)' -recurse
+      Write-Output "-------------System.DefaultWorkingDirectory-----------------"
+      Get-ChildItem -Path '$(System.DefaultWorkingDirectory)' -recurse
+      Write-Output "----------------System.ArtifactsDirectory----------------"
+      Get-ChildItem -Path '$(System.ArtifactsDirectory)' -recurse
+
+# - task: PowerPlatformBackupEnvironment@2
+#   displayName: "Backup '${{ parameters.environmentname }}'"
+#   inputs:
+#     authenticationType: 'PowerPlatformSPN'
+#     PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+#     BackupLabel: 'Full Backup - ${{ parameters.environmentname }} - $(Build.BuildNumber)'
+#     Notes: 'taking backup'
+
+- ${{ if eq(parameters.publishSourceAndTargetEnv, true) }}:
+  - task: PowerPlatformPublishCustomizations@2
+    displayName: "Publish before Import in ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'
+
+- ${{ if eq(parameters.d365master, true) }}:            
+  - task: PowerPlatformImportSolution@2
+    displayName: "Import ${{ parameters.solutionNameD365Master }} to ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+      SolutionInputFile: '${{ parameters.droppath }}\${{ parameters.solutionNameD365Master }}_unmanaged.zip'
+      AsyncOperation: '${{ parameters.asyncOperation }}'
+      MaxAsyncWaitTime: '60'
+      PublishCustomizationChanges: true
+      UseDeploymentSettingsFile: true
+      DeploymentSettingsFile: '${{ parameters.solutionDeploymentSettingsFile }}\${{ parameters.solutionNameD365Master }}_deployment_${{parameters.environmentname}}.json'
+
+- ${{ if eq(parameters.portalcli, true) }}:            
+  - task: PowerPlatformImportSolution@2
+    displayName: "Import ${{ parameters.solutionNamePortalCli }} to ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+      SolutionInputFile: '${{ parameters.droppath }}\${{ parameters.solutionNamePortalCli }}_unmanaged.zip'
+      AsyncOperation: '${{ parameters.asyncOperation }}'
+      MaxAsyncWaitTime: '60'
+      PublishCustomizationChanges: true
+      UseDeploymentSettingsFile: true
+      DeploymentSettingsFile: '${{ parameters.solutionDeploymentSettingsFile }}\${{ parameters.solutionNamePortalCli }}_deployment_${{parameters.environmentname}}.json'
+
+- ${{ if eq(parameters.publishSourceAndTargetEnv, true) }}:
+  - task: PowerPlatformPublishCustomizations@2
+    displayName: "Publish after Import in ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'

@@ -1,0 +1,93 @@
+# Name: Import Portal Files
+# Import Portal Files
+
+parameters:
+  portalcli: true
+  portalWebSiteId: ""
+  # serviceConnectionUrl: ""
+  environmentGuid: ""
+  environmentname: ""
+  environmentconnection: ""
+  droppath: ""
+  deploymentProfileName: ""
+
+steps:
+- ${{ if eq(parameters.portalcli, true) }}:
+    # Set PACEXEPATH variable : the path to the PAC CLI executable 
+  - pwsh: |
+      echo "It will add the directory to PATH for all the subsequent tasks, and you can easily use pac in a script."
+      echo "Execute ICCD Pipeline in 'Enable system diagnostics' Mode"
+      $pacExePath = $env:POWERPLATFORMTOOLS_PACCLIPATH + "\pac\tools\pac.exe"
+      #$pac = Join-Path -Path $env:POWERPLATFORMTOOLS_PACCLIPATH -ChildPath "\pac\tools\pac.exe" 
+      #$pac = Join-Path $env:POWERPLATFORMTOOLS_PACCLIPATH  "\pac\tools\pac.exe" 
+      ## echo "Join-Path $env:POWERPLATFORMTOOLS_PACCLIPATH pac tools -->" "##vso[task.prependpath]$pac"
+      echo "-->"
+      echo "##vso[task.prependpath]$pacExePath"
+      echo "-->"
+      echo "##vso[task.setvariable variable=PACEXEPATH]$pacExePath"
+      echo "-->"
+    displayName: 'Add PAC.exe to Path' 
+  
+  # Sets the Connection variables from the Service Connection passed in input parameter
+  # Will set BuildTools.ApplicationId, BuildTools.ClientSecret, BuildTools.TenantId
+  - task: PowerPlatformSetConnectionVariables@2
+    displayName: 'Set Connection Variables for - ${{parameters.environmentconnection}}'
+    name: testConnectionVariables
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{parameters.environmentconnection}}'
+  
+  #- task: PowerShell@2
+  #  displayName: 'Run Predeploy Configuration'
+  #  env:
+  #    CONNECTIONSTRING: 'AuthType=ClientSecret;url=${{ parameters.environmentServiceUrl }};ClientId=$(connectionVariables.BuildTools.ApplicationId);ClientSecret=$(connectionVariables.BuildTools.ClientSecret)'
+        
+  #- task: PowerShell@2
+  #  displayName: "Set and Print BuildTools.EnvironmentUrl"
+  #  inputs:
+  #    targetType: 'inline'
+  #    script: |
+  #      echo "BuildTools.EnvironmentUrl  -->" $(BuildTools.EnvironmentUrl)
+  #      echo "parameters.serviceConnectionUrl  -->" ${{parameters.serviceConnectionUrl}}
+  #      Write-Host "##vso[task.setvariable variable=BuildTools.EnvironmentUrl]${{parameters.serviceConnectionUrl}}"
+  
+  #- task: PowerShell@2
+  #  inputs:
+  #    targetType: 'inline'
+  #    script: |
+  #      Invoke-WebRequest https://aka.ms/PowerAppsCLI -OutFile pac.msi
+  #      msiexec /i pac.msi /quiet /norestart
+  
+  # PAC Auth - Connects to the Power Platform environment
+  # $pacCommand = "auth create --url ${{parameters.serviceConnectionUrl}} --applicationId $(testConnectionVariables.BuildTools.ApplicationId) --clientSecret $(testConnectionVariables.BuildTools.ClientSecret) --tenant $(testConnectionVariables.BuildTools.TenantId)"
+  - pwsh: |
+      $pacCommand = "auth create --environment ${{parameters.environmentGuid}} --applicationId $(testConnectionVariables.BuildTools.ApplicationId) --clientSecret $(testConnectionVariables.BuildTools.ClientSecret) --tenant $(testConnectionVariables.BuildTools.TenantId)"
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Auth'
+  
+  # PAC Import - Including Deployment Profile
+  - pwsh: |
+      $pacCommand = "paportal upload --path '${{ parameters.droppath }}\Schema\w\' --deploymentProfile ${{ parameters.deploymentProfileName }} "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Import'
+
+
+
+      
+      #      - task: PowerPlatformUploadPaportal@2
+#        inputs:
+ #         authenticationType: 'PowerPlatformSPN'
+  #        PowerPlatformSPN: 'CRM-NPD-ServiceConnection'
+   #       UploadPath: 'Upload path:\'
+    # DeploymentProfile: 'cadad'
+    # ModelVersion: 'as'
+
+      
+      
+ 

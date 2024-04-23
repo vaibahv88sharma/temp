@@ -1,0 +1,221 @@
+variables:
+- group: d365-variable-group-one
+- group: d365-variable-group-two
+
+# URL of Env
+- name: 'serviceConnectionUrl_dev'
+  value: 'https://org2e69d8e6.crm6.dynamics.com/'
+- name: 'serviceConnectionUrl_test'
+  value: 'https://org2e69d8e6.crm6.dynamics.com/'
+
+# URL of Env
+- name: 'environmentGuid_dev'
+  value: '1272b542-e9b5-ec51-8b73-436b7d2600c2' # either URL or GUID, i.e. 'https://orgd4896220.crm6.dynamics.com/' OR '6742403d-645c-eb5f-b222-04661cb029c1'
+- name: 'environmentGuid_test'
+  value: '1272b542-e9b5-ec51-8b73-436b7d2600c2' # either URL or GUID, i.e. 'https://orgd4896220.crm6.dynamics.com/' OR '6742403d-645c-eb5f-b222-04661cb029c1'
+
+# - name: 'serviceConnectionName_dev'
+#   value: 'CRM-NPD-ServiceConnection'
+# - name: 'serviceConnectionName_test'
+#   value: 'CRM-TEST-ServiceConnection'
+
+# Solution Names
+- name: 'solutionName_D365Master'
+  value: 'D365Master'
+- name: 'solutionName_PortalCli'
+  value: 'PortalCli'
+- name: 'solutionVersionPrefix'
+  value: '1.0.0'
+
+# Solution Files
+- name: 'drop_file_location'
+  value: '$(Build.StagingDirectory)\SolutionDrop'
+- name: 'solution_source_folder'
+  value: '$(Build.SourcesDirectory)\SoluionItems\CiCd\Solutions'
+
+# Portal
+- name: 'portal_WebSiteId'
+  value: 'e7e25dae-eafa-ed11-8f6d-00224896c34f'
+- name: 'portal_schema_location_in_solutionDrop'
+  value: '$(Build.StagingDirectory)\SolutionDrop\Schema\'
+- name: 'portal_schema_location_in_repo'
+  value: '$(Build.SourcesDirectory)\SoluionItems\Portal\Schema\'
+- name: 'portal_deployment_profiles_folder'
+  value: '$(Build.SourcesDirectory)\SoluionItems\CiCd\SolutionsDeploymentSettings\portal-deployment-profiles\'
+
+# Other
+- name: 'datetimeStampPipelineStartTime'
+  value: $[ format('{0:yyyy}.{0:MM}.{0:dd}', pipeline.startTime) ]
+- name: 'solutionDeploymentSettingsFile'
+  value: '$(Build.SourcesDirectory)\SoluionItems\CiCd\SolutionsDeploymentSettings\solution-deployment-profiles'
+- name: 'droppath'
+  value: '$(Pipeline.Workspace)\SolutionDrop'
+  # value: '$(Build.StagingDirectory)\SolutionDrop'
+  # value: '$(Build.SourcesDirectory)\SolutionsZipFiles'
+
+
+# Data
+- name: 'data_export_schemaFile'
+  value: '$(Build.SourcesDirectory)\SoluionItems\Data\Schema'
+# - name: 'data_export_dataFile'
+  # value: '$(Build.StagingDirectory)\SolutionDrop'
+- name: 'data_import_dataFile'
+  value: '$(Build.SourcesDirectory)\SoluionItems\Data\Zip'
+- name: 'data_export_extraxtedZip'
+  value: '$(Build.SourcesDirectory)\SoluionItems\Data\ExtractedZip'
+
+  # Canvas App
+- name: 'canvas_app_folder'
+  value: '$(Build.SourcesDirectory)\SoluionItems\CiCd\SolutionsOtherExtract\CanvasApp'
+- name: 'canvas_app_maspp_package_location'
+  value: '$(Build.SourcesDirectory)\SoluionItems\CiCd\Solutions\D365Master\CanvasApps'
+
+# Component Library
+- name: 'canvas_app_name_one_friendlyname'
+  value: 'ComponentLibrary_MenuLeftNav'
+- name: 'canvas_app_name_one'
+  value: 'd365dev_componentlibrarymenuleftnav'
+  # value: 'd365dev_componentlibrarymenuleftnav_145d5_DocumentUri'
+- name: 'canvas_app_details_one'
+  value: 'ComponentLibrary_MenuLeftNav'
+  
+# Command Bar   
+- name: 'canvas_app_name_two_friendlyname'
+  value: 'MasterModelApp_DefaultCommandLibrary'
+- name: 'canvas_app_name_two'
+  value: 'd365dev_mastermodelappdefaultcommandlibrary'
+  # value: 'd365dev_mastermodelappdefaultcommandlibrary_37e74_DocumentUri'
+- name: 'canvas_app_details_two'
+  value: 'With( Clause, as ClearCollect is not available in Ribbon / Commandbar'
+  
+- name: 'canvas_app_name_three_friendlyname'
+  value: 'Laptop_Responsive_BulkDataOperations'
+- name: 'canvas_app_name_three'
+  value: 'd365dev_laptopresponsivebulkdataoperations'
+  # value: 'd365dev_laptopresponsivebulkdataoperations_a90c6_DocumentUri'
+- name: 'canvas_app_details_three'
+  value: 'For Loop and String to Text , ForAll(Sequence(Value(txtNumber.Text))'
+
+- name: 'canvas_app_name_four_friendlyname'
+  value: 'Lptop_Rsponsive_Multi_Form_Multi_Screen_MenuCmponent'
+- name: 'canvas_app_name_four'
+  value: 'd365dev_laptopresponsive_'
+  # value: 'd365dev_laptopresponsive_a68ee_DocumentUri'
+- name: 'canvas_app_details_four'
+  value: 'Lptop_Rsponsive_Multi_Form_Multi_Screen_MenuCmponent'
+
+- name: 'canvas_app_name_five_friendlyname'
+  value: 'Lptop_MultiForm_SingleScreen_PermissionGalleryEdit'
+- name: 'canvas_app_name_five'
+  value: 'd365dev_laptop_9319e'
+  # value: 'd365dev_laptop_9319e_DocumentUri'
+- name: 'canvas_app_details_five'
+  value: 'Lptop_MultiForm_SingleScreen_PermissionGalleryEdit'
+  
+- name: 'canvas_app_name_six_friendlyname'
+  value: 'Lptop_Rsponsiv_Breakpnt_Popup_SecrityRol'
+- name: 'canvas_app_name_six'
+  value: 'd365dev_laptopresponsivebreakpoint'
+  # value: 'd365dev_laptopresponsivebreakpoint_e7df7_DocumentUri'
+- name: 'canvas_app_details_six'
+  value: 'Filter(Devices,(Assigned To.Email = User().Email || Assigned To.Email = vaibhav88sharma@gmail.com)) and ClearCollect(CurrentUserRoles,["Basic User","System Administrator"](LookUp(Users,User Name = User().Email).Security Roles (systemuserroles_association)).Name);'
+  
+- name: 'canvas_app_name_seven_friendlyname'
+  value: 'Mobile_RsponsveAttrib_CstmActonAPI_MenuComponent'
+- name: 'canvas_app_name_seven'
+  value: 'd365dev_mobileformatresponsive'
+  # value: 'd365dev_mobileformatresponsive_3533b_DocumentUri'
+- name: 'canvas_app_details_one'
+  value: 'Mobile_RsponsveAttrib_CstmActonAPI_MenuComponent'
+
+- name: 'canvas_app_name_eight_friendlyname'
+  value: 'Responsive_Screen_Gallery_Filters_A'
+- name: 'canvas_app_name_eight'
+  value: 'd365dev_responsivescreengalleryfilters_'
+  # value: 'd365dev_responsivescreengalleryfilters_eba19_DocumentUri'
+- name: 'canvas_app_details_eight'
+  value: 'Responsive_Screen_Gallery_Filters_A'
+
+- name: 'canvas_app_name_nine_friendlyname'
+  value: 'Rsponsve_Scren_Galery_Filter_A_GrdEdit_ManualBtnPerRow'
+- name: 'canvas_app_name_nine'
+  value: 'd365dev_responsivescreengalleryfiltersagrided'
+  # value: 'd365dev_responsivescreengalleryfiltersagrided07688_DocumentUri'
+- name: 'canvas_app_details_nine'
+  value: 'Rsponsve_Scren_Galery_Filter_A_GrdEdit_ManualBtnPerRow'
+
+- name: 'canvas_app_name_ten_friendlyname'
+  value: 'Rsponsve_Scren_Galery_Filter_A_GrdEdit_OnHidenRowSelect'
+- name: 'canvas_app_name_ten'
+  value: 'd365dev_rsponsvescrengaleryfilteragrdeditonhi'
+  # value: 'd365dev_rsponsvescrengaleryfilteragrdeditonhi51872_DocumentUri'
+- name: 'canvas_app_details_ten'
+  value: 'Rsponsve_Scren_Galery_Filter_A_GrdEdit_OnHidenRowSelect'
+
+- name: 'canvas_app_name_eleven_friendlyname'
+  value: 'Edit_Grid_Modern_Controls_Patch_UpdateIf_ShowColumns_B'
+- name: 'canvas_app_name_eleven'
+  value: 'd365dev_editablegridgallerymoderncontrolsb'
+  # value: 'd365dev_editablegridgallerymoderncontrolsb_c8e1c_DocumentUri'
+- name: 'canvas_app_details_eleven'
+  value: 'Edit_Grid_Modern_Controls_Patch_UpdateIf_ShowColumns_B'
+
+- name: 'canvas_app_name_twelve_friendlyname'
+  value: 'Rsponsve_Edit_Grid_Bulk_CRUD_UpdateIF_FirstError_C'
+- name: 'canvas_app_name_twelve'
+  value: 'd365dev_responsiveeditablegridbulkcrudc'
+  # value: 'd365dev_responsiveeditablegridbulkcrudc_75c73_DocumentUri'
+- name: 'canvas_app_details_twelve'
+  value: 'Rsponsve_Edit_Grid_Bulk_CRUD_UpdateIF_FirstError_C'
+  
+- name: 'canvas_app_name_thirteen_friendlyname'
+  value: 'Rsponsve_Edit_Grid_Bulk_CRUD_UpdateIF_FirstError_C2'
+- name: 'canvas_app_name_thirteen'
+  value: 'd365dev_rsponsveeditgridbulkcrudupdateiffirst'
+  # value: 'd365dev_rsponsveeditgridbulkcrudupdateiffirst06610_DocumentUri'
+- name: 'canvas_app_details_thirteen'
+  value: 'Rsponsve_Edit_Grid_Bulk_CRUD_UpdateIF_FirstError_C2'
+
+- name: 'canvas_app_name_forteen_friendlyname'
+  value: 'GalleryAndFormOnSameScreen_FormLastSubmit_D'
+- name: 'canvas_app_name_forteen'
+  value: 'd365dev_galleryandformonsamescreenformlastsub'
+  # value: 'd365dev_galleryandformonsamescreenformlastsub73816_DocumentUri'
+- name: 'canvas_app_details_forteen'
+  value: 'Gallery And Form On Same Screen, Form.Mode, Form.DisplayMode, Set(varDefaultGal,Form_1.LastSubmit), ResetForm(), Form.Unsaved, Form - Data Card - Check if value is changed - ThisItem.Name <> DataCardValue1_1.Text , Form Latest Changes - Form.Updates, Form Latest Submit - Form.LastSubmit'
+
+- name: 'canvas_app_name_fifteen_friendlyname'
+  value: 'Tab_Single_Form_Single_Screen_Coalesce_E'
+- name: 'canvas_app_name_fifteen'
+  value: 'd365dev_tabsingleformmultiscreen'
+  # value: 'd365dev_tabsingleformmultiscreen_11c65_DocumentUri'
+- name: 'canvas_app_details_fifteen'
+  value: 'Tablet Orientation, Tab with Single Form, Single Screen, Coalesce Error Coalesce(Name_DataCard1.Error) / Multiple Error including Rexex - Coalesce(Parent.Error, Form OnSuccess, Form Control Replace with Slider, Date Default - Coalesce(Parent.Default,Today())'
+
+- name: 'canvas_app_name_sixteen_friendlyname'
+  value: 'Tab_Multi_Screen_Multi_Form_Valid_Updates_Error_F'
+- name: 'canvas_app_name_sixteen'
+  value: 'd365dev_tabmultiscreenmultiform'
+  # value: 'd365dev_tabmultiscreenmultiform_f32d3_DocumentUri'
+- name: 'canvas_app_details_sixteen'
+  value: 'Mobile Orientation, Tab with Multi Screen, Multi Form, Form.Valid, Form.Updates, First(Errors(Devices)).Message , Navigation - Back(), Additional Control - Default Value - Rating, Text Currency DIsplay Formatting without Regex'
+  
+- name: 'canvas_app_name_seventeen_friendlyname'
+  value: 'CustomModalForModelDriven'
+- name: 'canvas_app_name_seventeen'
+  value: 'd365dev_custommodalformodeldriven'
+  # value: 'd365dev_custommodalformodeldriven_58429'
+- name: 'canvas_app_details_seventeen'
+  value: 'Custom Modal / Popup , For Model Driven App, Commandbar'
+
+# Notification Emails
+- name: 'notifyUsers_Email'
+  value: '["vaibhav88sharma@hotmail.com"]'
+
+
+# stages:
+# - stage: PrintStage
+#   jobs:
+#   - job: Print
+#     steps:
+#     - script: echo $(serviceConnectionUrl_dev)

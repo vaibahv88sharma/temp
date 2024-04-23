@@ -1,0 +1,27 @@
+# Name: Pack Solutions
+# Packs all solutions
+
+parameters:
+  d365master: true
+  portalcli: true
+  solutionNameD365Master: ""
+  solutionNamePortalCli: ""
+  solutionType: 'Managed' #Both
+  solutionOutputFile: ""
+
+steps:
+- ${{ if eq(parameters.d365master, true) }}:
+  - task: PowerPlatformPackSolution@2
+    displayName: "Pack ${{ parameters.solutionNameD365Master }}"
+    inputs:
+        SolutionSourceFolder: '$(solution_source_folder)\${{ parameters.solutionNameD365Master }}'
+        SolutionOutputFile: '${{ parameters.solutionOutputFile }}\${{ parameters.solutionNameD365Master }}_unmanaged.zip'        
+        # SolutionType: '${{ parameters.solutionType }}'
+
+- ${{ if eq(parameters.portalcli, true) }}:
+  - task: PowerPlatformPackSolution@2
+    displayName: "Pack ${{ parameters.solutionNamePortalCli }}"
+    inputs:
+        SolutionSourceFolder: '$(solution_source_folder)\${{ parameters.solutionNamePortalCli }}'
+        SolutionOutputFile: '${{ parameters.solutionOutputFile }}\${{ parameters.solutionNamePortalCli }}_unmanaged.zip'        
+        # SolutionType: '${{ parameters.solutionType }}'

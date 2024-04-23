@@ -1,0 +1,141 @@
+# Name: Export Solutions
+# Exports all solutions
+
+parameters:
+  d365master: true
+  portalcli: true
+  managed: false
+  environmentname: ""
+  environmentconnection: ""
+  solutionNameD365Master: ""
+  solutionVersionPrefix: ""
+  solutionNamePortalCli: ""
+  solutionOutputFile: ""
+  publishSourceAndTargetEnv: true
+
+steps:
+
+
+- task: PowerPlatformWhoAmi@2
+  displayName: "Print Power Platform Who Am I in ${{ parameters.environmentname }}"
+  inputs:
+    authenticationType: 'PowerPlatformSPN'
+    PowerPlatformSPN: '${{ parameters.environmentconnection }}'
+
+- ${{ if eq(parameters.publishSourceAndTargetEnv, true) }}:
+  - task: PowerPlatformPublishCustomizations@2
+    displayName: "Publish before Export from ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'
+
+# - task: PowerPlatformBackupEnvironment@2
+#   displayName: "Backup Environment ${{ parameters.environmentname }}"
+#   inputs:
+#     authenticationType: 'PowerPlatformSPN'
+#     PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+#     BackupLabel: 'Full Backup - $(Build.BuildID)'
+
+- ${{ if eq(parameters.d365master, true) }}:
+
+  - task: PowerPlatformSetSolutionVersion@2 #Set Version in DEV with unique Build Number included
+    displayName: "Solution Versioning for ${{ parameters.solutionNameD365Master }}, value is ${{ parameters.solutionVersionPrefix }}.$(Build.BuildID)" #BuildNumber
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      SolutionName: "${{ parameters.solutionNameD365Master }}"
+      SolutionVersionNumber: '${{ parameters.solutionVersionPrefix }}.$(Build.BuildID)'
+  
+  - task: PowerPlatformExportSolution@2
+    displayName: "Export ${{ parameters.solutionNameD365Master }} from ${{ parameters.environmentname }} as Un-Managed Solution"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      SolutionName: "${{ parameters.solutionNameD365Master }}"
+      SolutionOutputFile: '${{ parameters.solutionOutputFile }}\${{ parameters.solutionNameD365Master }}_unmanaged.zip'
+      Managed: ${{ parameters.managed }}
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'
+
+  - task: PowerPlatformExportSolution@2
+    displayName: "Export ${{ parameters.solutionNameD365Master }} from ${{ parameters.environmentname }} as Managed Solution"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      SolutionName: "${{ parameters.solutionNameD365Master }}"
+      SolutionOutputFile: '${{ parameters.solutionOutputFile }}\${{ parameters.solutionNameD365Master }}_managed.zip'
+      Managed: 'true'
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'
+
+- ${{ if eq(parameters.portalcli, true) }}:
+  - task: PowerPlatformSetSolutionVersion@2 #Set Version in DEV with unique Build Number included
+    displayName: "Solution Versioning for ${{ parameters.solutionNamePortalCli }}, value is ${{ parameters.solutionVersionPrefix }}.$(Build.BuildID)"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      SolutionName: "${{ parameters.solutionNamePortalCli }}"
+      SolutionVersionNumber: '${{ parameters.solutionVersionPrefix }}.$(Build.BuildID)'
+
+  - task: PowerPlatformExportSolution@2
+    displayName: "Export ${{ parameters.solutionNamePortalCli }} from ${{ parameters.environmentname }} as Un-Managed Solution"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      SolutionName: "${{ parameters.solutionNamePortalCli }}"
+      SolutionOutputFile: '${{ parameters.solutionOutputFile }}\${{ parameters.solutionNamePortalCli }}_unmanaged.zip'
+      Managed: ${{ parameters.managed }}
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'
+
+  - task: PowerPlatformExportSolution@2
+    displayName: "Export ${{ parameters.solutionNamePortalCli }} from ${{ parameters.environmentname }} as Managed Solution"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      SolutionName: "${{ parameters.solutionNamePortalCli }}"
+      SolutionOutputFile: '${{ parameters.solutionOutputFile }}\${{ parameters.solutionNamePortalCli }}_managed.zip'
+      Managed: 'true'
+      AsyncOperation: true
+      MaxAsyncWaitTime: '60'
+
+- ${{ if or(eq(parameters.portalcli, true), eq(parameters.d365master, true)) }}:
+
+  - task: PowerPlatformChecker@2 # https://philcole.org/post/solution-checker-ppbt/
+    displayName: "Solution Checker for All Solutions"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: 'CRM-NPD-ServiceConnection'
+      RuleSet: '0ad12346-e108-40b8-a956-9a8f95ea18c9'  # solution checker
+      FilesToAnalyze: '$(Pipeline.Workspace)/**/*.zip'
+      ErrorLevel: 'HighIssueCount'	# 'CriticalIssueCount'	
+      ErrorThreshold: '0'	
+      FailOnPowerAppsCheckerAnalysiserror: true	
+      # SaveResults: true
+      
+  - task: CopyFiles@2
+    displayName: 'Copy Extracted Solution Zip Files to: $(Build.SourcesDirectory)\SoluionItems\CiCd\SolutionsZipFiles\ For Git Checkin'
+    inputs:
+      SourceFolder: '$(drop_file_location)'
+      # SourceFolder: '$(Build.StagingDirectory)\SolutionDrop'
+      Contents: '**'
+      TargetFolder: '$(Build.SourcesDirectory)\SoluionItems\CiCd\SolutionsZipFiles\'
+      #CleanTargetFolder: true
+      OverWrite: true
+      #retryCount: '1'
+  
+  - task: CopyFiles@2
+    displayName: 'Copy Extracted Solution Zip Files to: $(build.artifactstagingdirectory)'
+    inputs:
+      SourceFolder: '$(drop_file_location)'
+      # SourceFolder: '$(Build.StagingDirectory)\SolutionDrop'
+      Contents: '**'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  - task: PublishBuildArtifacts@1
+    displayName: "Publish Artifacts of Extracted Solution Zip Files : drop"
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'SolutionDrop'
+      publishLocation: 'Container' #'pipeline'

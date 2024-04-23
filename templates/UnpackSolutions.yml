@@ -1,0 +1,29 @@
+# Name: Unpack Solutions
+# Unpacks all solutions
+
+parameters:
+  d365master: true
+  portalcli: true
+  solutionNameD365Master: ""
+  solutionNamePortalCli: ""
+  solutionType: 'Managed' #Both
+  solutionTargetFolder: ""
+
+steps:
+- ${{ if eq(parameters.d365master, true) }}:
+  - task: PowerPlatformUnpackSolution@2
+    displayName: "Unpack ${{ parameters.solutionNameD365Master }}"
+    inputs:
+        SolutionInputFile: '$(drop_file_location)\${{ parameters.solutionNameD365Master }}_unmanaged.zip'
+        # SolutionInputFile: '$(Build.StagingDirectory)\SolutionDrop\${{ parameters.solutionNameD365Master }}_unmanaged.zip'
+        SolutionTargetFolder: '${{ parameters.solutionTargetFolder }}\${{ parameters.solutionNameD365Master }}'
+        # SolutionTargetFolder: '$(Build.SourcesDirectory)\SoluionItems\CiCd\Solutions\${{ parameters.solutionNameD365Master }}'
+        #SolutionType: '${{ parameters.solutionType }}'
+
+- ${{ if eq(parameters.portalcli, true) }}:
+  - task: PowerPlatformUnpackSolution@2
+    displayName: "Unpack ${{ parameters.solutionNamePortalCli }}"
+    inputs:
+        SolutionInputFile: '$(drop_file_location)\${{ parameters.solutionNamePortalCli }}_unmanaged.zip'
+        SolutionTargetFolder: '${{ parameters.solutionTargetFolder }}\${{ parameters.solutionNamePortalCli }}'
+        #SolutionType: '${{ parameters.solutionType }}'

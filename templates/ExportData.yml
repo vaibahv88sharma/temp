@@ -1,0 +1,107 @@
+# Name: Export Data
+# Exports Data from Multiple Schema Files
+
+parameters:
+  d365masterData: true
+  portalcliData: true
+  environmentname: ""
+  environmentconnection: ""
+  solutionNameD365Master: ""
+  solutionNamePortalCli: ""
+  serviceConnectionUrl: ""
+  schemaFile: ""
+  dataFile: ""
+  dataExtraxtedZipFile: ""
+
+steps:
+
+        
+- task: CmdLine@2
+  displayName: "Print"
+  inputs:
+    script: |
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Schema\Schema_${{ parameters.solutionNameD365Master }}.xml
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Zip\Data_${{ parameters.solutionNameD365Master }}.zip
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Schema\Schema_${{ parameters.solutionNamePortalCli }}.xml
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Zip\Data_${{ parameters.solutionNamePortalCli }}.zip
+      echo $(BuildTools.EnvironmentUrl)
+      echo "dataFile path"
+      echo ${{ parameters.dataFile }}\Data_${{ parameters.solutionNameD365Master }}.zip
+      echo "dataFile dataExtraxtedZipFile"
+      echo ${{ parameters.dataExtraxtedZipFile }}\${{ parameters.solutionNameD365Master }}
+      
+- task: PowerShell@2
+  displayName: "Set BuildTools.EnvironmentUrl"
+  inputs:
+    targetType: 'inline'
+    script: |
+      # Write your PowerShell commands here.
+      # By default it looks like the environment property on the 'Power Platform Set Connection Variables' task is set to $(BuildTools.EnvironmentUrl), which looking at the documentation is only populated on the pipeline when the 'Power Platform Create Environment' task is used (devops-build-tool-tasks#power-platform-create-environment )
+
+      Write-Host "##vso[task.setvariable variable=BuildTools.EnvironmentUrl]${{parameters.serviceConnectionUrl}}"
+      Write-Host "##vso[task.setvariable variable=BuildTools.EnvironmentUrl]"
+
+- ${{ if eq(parameters.d365masterData, true) }}:
+  - task: PowerPlatformExportData@2
+    displayName: "Export ${{ parameters.solutionNameD365Master }}'s DATA from ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      Environment: '$(BuildTools.EnvironmentUrl)'
+      SchemaFile: '${{ parameters.schemaFile }}\Schema_${{ parameters.solutionNameD365Master }}.xml'
+      DataFile: '${{ parameters.dataFile }}\Data_${{ parameters.solutionNameD365Master }}.zip'
+      Overwrite: true
+
+- ${{ if eq(parameters.portalcliData, true) }}:
+  - task: PowerPlatformExportData@2
+    displayName: "Export ${{ parameters.solutionNamePortalCli }}'s DATA from ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      Environment: '$(BuildTools.EnvironmentUrl)'
+      SchemaFile: '${{ parameters.schemaFile }}\Schema_${{ parameters.solutionNamePortalCli }}.xml'
+      DataFile: '${{ parameters.dataFile }}\Data_${{ parameters.solutionNamePortalCli }}.zip'
+      Overwrite: true
+
+- task: CopyFiles@2
+  displayName: 'Copy Extracted Solution Zip Files to: $(Build.SourcesDirectory)\SoluionItems\Data\ For Git Checkin'
+  inputs:
+    SourceFolder: '$(drop_file_location)'
+    # SourceFolder: '$(Build.StagingDirectory)\SolutionDrop'
+    Contents: '**'
+    TargetFolder: '$(Build.SourcesDirectory)\SoluionItems\Data\Zip\'
+    #CleanTargetFolder: true
+    OverWrite: true
+    #retryCount: '1'
+
+- ${{ if eq(parameters.d365masterData, true) }}:
+  - task: ExtractFiles@1
+    displayName: 'Extract ${{ parameters.dataFile }}\Data_${{ parameters.solutionNameD365Master }}.zip For Git Checkin'
+    inputs:
+      archiveFilePatterns: '${{ parameters.dataFile }}\Data_${{ parameters.solutionNameD365Master }}.zip'
+      destinationFolder: '${{ parameters.dataExtraxtedZipFile }}\${{ parameters.solutionNameD365Master }}'
+      # cleanDestinationFolder: true
+      overwriteExistingFiles: true
+    
+- ${{ if eq(parameters.portalcliData, true) }}:
+  - task: ExtractFiles@1
+    displayName: 'Extract ${{ parameters.dataFile }}\Data_${{ parameters.solutionNamePortalCli }}.zip For Git Checkin'
+    inputs:
+      archiveFilePatterns: '${{ parameters.dataFile }}\Data_${{ parameters.solutionNamePortalCli }}.zip'
+      destinationFolder: '${{ parameters.dataExtraxtedZipFile }}\${{ parameters.solutionNamePortalCli }}'
+      # cleanDestinationFolder: true
+      overwriteExistingFiles: true
+
+- task: CopyFiles@2
+  displayName: 'Copy Extracted Solution Zip Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    SourceFolder: '$(drop_file_location)'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+- task: PublishBuildArtifacts@1
+  displayName: "Publish Artifacts of Extracted Solution Zip Files : drop"
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'SolutionDrop'
+    publishLocation: 'Container' #'pipeline'

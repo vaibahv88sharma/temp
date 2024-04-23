@@ -1,0 +1,146 @@
+# Name: Export Portal Files
+# Export Portal Files
+
+parameters:
+  portalcli: true
+  portalWebSiteId: ""
+  # serviceConnectionUrl: ""
+  environmentGuid: ""
+  environmentconnection: ""
+
+steps:
+
+- task: CmdLine@2
+  displayName: "Print"
+  inputs:
+    script: |
+      echo "Portal website id - "
+      echo ${{ parameters.portalWebSiteId }}
+      echo "Env environmentGuid - "
+      echo ${{ parameters.environmentGuid }}
+
+- ${{ if eq(parameters.portalcli, true) }}:
+    # Set PACEXEPATH variable : the path to the PAC CLI executable 
+  - pwsh: |
+      echo "It will add the directory to PATH for all the subsequent tasks, and you can easily use pac in a script."
+      echo "Execute ICCD Pipeline in 'Enable system diagnostics' Mode"
+      $pacExePath = $env:POWERPLATFORMTOOLS_PACCLIPATH + "\pac\tools\pac.exe"
+      #$pac = Join-Path -Path $env:POWERPLATFORMTOOLS_PACCLIPATH -ChildPath "\pac\tools\pac.exe" 
+      #$pac = Join-Path $env:POWERPLATFORMTOOLS_PACCLIPATH  "\pac\tools\pac.exe" 
+      ## echo "Join-Path $env:POWERPLATFORMTOOLS_PACCLIPATH pac tools -->" "##vso[task.prependpath]$pac"
+      echo "-->"
+      echo "##vso[task.prependpath]$pacExePath"
+      echo "-->"
+      echo "##vso[task.setvariable variable=PACEXEPATH]$pacExePath"
+      echo "-->"
+    displayName: 'Add PAC.exe to Path' 
+  
+  # Sets the Connection variables from the Service Connection passed in input parameter
+  # Will set BuildTools.ApplicationId, BuildTools.ClientSecret, BuildTools.TenantId
+  - task: PowerPlatformSetConnectionVariables@2
+    displayName: 'Set Connection Variables for - ${{parameters.environmentconnection}}'
+    # displayName: 'Set Connection Variables for - ${{parameters.serviceConnectionName}}'
+    name: devConnectionVariables
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{parameters.environmentconnection}}'
+      # PowerPlatformSPN: '${{parameters.serviceConnectionName}}'
+  
+  #- task: PowerShell@2
+  #  displayName: 'Run Predeploy Configuration'
+  #  env:
+  #    CONNECTIONSTRING: 'AuthType=ClientSecret;url=${{ parameters.environmentServiceUrl }};ClientId=$(connectionVariables.BuildTools.ApplicationId);ClientSecret=$(connectionVariables.BuildTools.ClientSecret)'
+        
+  #- task: PowerShell@2
+  #  displayName: "Set and Print BuildTools.EnvironmentUrl"
+  #  inputs:
+  #    targetType: 'inline'
+  #    script: |
+  #      echo "BuildTools.EnvironmentUrl  -->" $(BuildTools.EnvironmentUrl)
+  #      echo "parameters.serviceConnectionUrl  -->" ${{parameters.serviceConnectionUrl}}
+  #      Write-Host "##vso[task.setvariable variable=BuildTools.EnvironmentUrl]${{parameters.serviceConnectionUrl}}"
+  # connectionVariables.BuildTools.DataverseConnectionString
+  #- task: PowerShell@2
+  #  inputs:
+  #    targetType: 'inline'
+  #    script: |
+  #      Invoke-WebRequest https://aka.ms/PowerAppsCLI -OutFile pac.msi
+  #      msiexec /i pac.msi /quiet /norestart
+  
+  # PAC Auth - Connects to the Power Platform environment
+  # $pacCommand = "auth create --url ${{parameters.serviceConnectionUrl}} --applicationId $(devConnectionVariables.BuildTools.ApplicationId) --clientSecret $(devConnectionVariables.BuildTools.ClientSecret) --tenant $(devConnectionVariables.BuildTools.TenantId)"
+  - pwsh: |
+      $pacCommand = "auth create --environment ${{parameters.environmentGuid}} --applicationId $(devConnectionVariables.BuildTools.ApplicationId) --clientSecret $(devConnectionVariables.BuildTools.ClientSecret) --tenant $(devConnectionVariables.BuildTools.TenantId)"
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Auth'
+  
+  # PAC Download - Downlaod Files Locally
+  - pwsh: |
+      $pacCommand = "paportal download --path '$(portal_schema_location_in_solutionDrop)' --webSiteId ${{parameters.portalWebSiteId}} --overwrite true"
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Download'
+
+    ##
+      #- task: PowerPlatformDownloadPaportal@2
+      #  inputs:
+      #    authenticationType: 'PowerPlatformSPN'
+      #    PowerPlatformSPN: 'CRM-TEST-ServiceConnection'
+      #    DownloadPath: 'c:\'
+      #    WebsiteId: 'ewq-eqwe-eqe'
+      #    Overwrite: true
+      #    ModelVersion: 'cxcxc'      
+      
+      
+- task: CopyFiles@2
+  displayName: 'Copy Extracted Portal Files to: $(portal_schema_location_in_repo) For Git Checkin'
+  inputs:
+    SourceFolder: '$(portal_schema_location_in_solutionDrop)'
+    Contents: '**'
+    TargetFolder: '$(portal_schema_location_in_repo)'
+    #CleanTargetFolder: true
+    OverWrite: true
+    #retryCount: '1'
+
+      
+- task: CopyFiles@2
+  displayName: 'Copy Portal Deployment Profile from: $(portal_deployment_profiles_folder) to: $(portal_schema_location_in_repo) For Publishing'
+  inputs:
+    SourceFolder: '$(portal_deployment_profiles_folder)'
+    Contents: '**'
+    # Contents: '**/portal-deployment-profiles/**'
+    TargetFolder: '$(portal_schema_location_in_repo)\w'
+    #CleanTargetFolder: true
+    OverWrite: true
+    #retryCount: '1'
+
+      
+- task: CopyFiles@2
+  displayName: 'Copy Portal Deployment Profile from: $(portal_deployment_profiles_folder) to: $(portal_schema_location_in_solutionDrop) For Publishing'
+  inputs:
+    SourceFolder: '$(portal_deployment_profiles_folder)'
+    Contents: '**'
+    # Contents: '**/portal-deployment-profiles/**'
+    TargetFolder: '$(portal_schema_location_in_solutionDrop)\w'
+    #CleanTargetFolder: true
+    OverWrite: true
+    #retryCount: '1'
+
+
+- task: CopyFiles@2
+  displayName: 'Copy Extracted Portal Files to: $(build.artifactstagingdirectory) for Publishing'
+  inputs:
+    SourceFolder: '$(drop_file_location)'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  displayName: "Publish Artifacts of Extracted Solution Zip Files : drop"
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'SolutionDrop'
+    publishLocation: 'Container' #'pipeline'

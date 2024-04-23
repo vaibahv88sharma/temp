@@ -1,0 +1,54 @@
+# Name: Import Data
+# Import Data from Multiple Zip Files
+
+parameters:
+  d365masterData: false
+  portalcliData: false
+  environmentname: ""
+  environmentconnection: ""
+  solutionNameD365Master: ""
+  solutionNamePortalCli: ""
+  droppath: ""
+  serviceConnectionUrl: ""
+
+steps:
+
+
+- task: CmdLine@2
+  displayName: "Print"
+  inputs:
+    script: |
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Schema\Schema_${{ parameters.solutionNameD365Master }}.xml
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Zip\Data_${{ parameters.solutionNameD365Master }}.zip
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Schema\Schema_${{ parameters.solutionNamePortalCli }}.xml
+      echo $(Build.SourcesDirectory)\SoluionItems\Data\Zip\Data_${{ parameters.solutionNamePortalCli }}.zip
+      echo $(BuildTools.EnvironmentUrl)
+      
+- task: PowerShell@2
+  displayName: "Set BuildTools.EnvironmentUrl"
+  inputs:
+    targetType: 'inline'
+    script: |
+      # Write your PowerShell commands here.
+      # By default it looks like the environment property on the 'Power Platform Set Connection Variables' task is set to $(BuildTools.EnvironmentUrl), which looking at the documentation is only populated on the pipeline when the 'Power Platform Create Environment' task is used (devops-build-tool-tasks#power-platform-create-environment )
+
+      Write-Host "##vso[task.setvariable variable=BuildTools.EnvironmentUrl]${{parameters.serviceConnectionUrl}}"
+
+- ${{ if eq(parameters.d365masterData, true) }}:
+  - task: PowerPlatformImportData@2
+    displayName: "Import ${{ parameters.solutionNameD365Master }}'s DATA into ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      Environment: '$(BuildTools.EnvironmentUrl)'
+      DataFile: '${{parameters.droppath}}\Data_${{ parameters.solutionNameD365Master }}.zip'
+
+- ${{ if eq(parameters.portalcliData, true) }}:
+  - task: PowerPlatformImportData@2
+    displayName: "Import ${{ parameters.solutionNamePortalCli }}'s DATA into ${{ parameters.environmentname }}"
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: "${{ parameters.environmentconnection }}"
+      Environment: '$(BuildTools.EnvironmentUrl)'
+      DataFile: '${{parameters.droppath}}\Data_${{ parameters.solutionNamePortalCli }}.zip'
+

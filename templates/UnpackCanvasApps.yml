@@ -1,0 +1,304 @@
+# Name: Export Canvas Apps
+# Export Canvas Apps
+
+parameters:
+  exportcanvasapps: true
+  # serviceConnectionUrl: ""
+  environmentGuid: ""
+  # serviceConnectionName: ""
+  #environmentname: ""
+  environmentconnection: ""
+
+steps:
+- ${{ if eq(parameters.exportcanvasapps, true) }}:
+    # Set PACEXEPATH variable : the path to the PAC CLI executable 
+  - pwsh: |
+      echo "It will add the directory to PATH for all the subsequent tasks, and you can easily use pac in a script."
+      echo "Execute ICCD Pipeline in 'Enable system diagnostics' Mode"
+      $pacExePath = $env:POWERPLATFORMTOOLS_PACCLIPATH + "\pac\tools\pac.exe"
+      #$pac = Join-Path -Path $env:POWERPLATFORMTOOLS_PACCLIPATH -ChildPath "\pac\tools\pac.exe" 
+      #$pac = Join-Path $env:POWERPLATFORMTOOLS_PACCLIPATH  "\pac\tools\pac.exe" 
+      ## echo "Join-Path $env:POWERPLATFORMTOOLS_PACCLIPATH pac tools -->" "##vso[task.prependpath]$pac"
+      echo "-->"
+      echo "##vso[task.prependpath]$pacExePath"
+      echo "-->"
+      echo "##vso[task.setvariable variable=PACEXEPATH]$pacExePath"
+      echo "-->"
+    displayName: 'Add PAC.exe to Path' 
+  
+  # Sets the Connection variables from the Service Connection passed in input parameter
+  # Will set BuildTools.ApplicationId, BuildTools.ClientSecret, BuildTools.TenantId
+  - task: PowerPlatformSetConnectionVariables@2
+    displayName: 'Set Connection Variables for - ${{parameters.environmentconnection}}'
+    # displayName: 'Set Connection Variables for - ${{parameters.serviceConnectionName}}'
+    name: devConnectionVariables
+    inputs:
+      authenticationType: 'PowerPlatformSPN'
+      PowerPlatformSPN: '${{parameters.environmentconnection}}'
+      # PowerPlatformSPN: '${{parameters.serviceConnectionName}}'
+  
+  #- task: PowerShell@2
+  #  displayName: 'Run Predeploy Configuration'
+  #  env:
+  #    CONNECTIONSTRING: 'AuthType=ClientSecret;url=${{ parameters.environmentServiceUrl }};ClientId=$(connectionVariables.BuildTools.ApplicationId);ClientSecret=$(connectionVariables.BuildTools.ClientSecret)'
+        
+  #- task: PowerShell@2
+  #  displayName: "Set and Print BuildTools.EnvironmentUrl"
+  #  inputs:
+  #    targetType: 'inline'
+  #    script: |
+  #      echo "BuildTools.EnvironmentUrl  -->" $(BuildTools.EnvironmentUrl)
+  #      echo "parameters.serviceConnectionUrl  -->" ${{parameters.serviceConnectionUrl}}
+  #      Write-Host "##vso[task.setvariable variable=BuildTools.EnvironmentUrl]${{parameters.serviceConnectionUrl}}"
+  # connectionVariables.BuildTools.DataverseConnectionString
+  #- task: PowerShell@2
+  #  inputs:
+  #    targetType: 'inline'
+  #    script: |
+  #      Invoke-WebRequest https://aka.ms/PowerAppsCLI -OutFile pac.msi
+  #      msiexec /i pac.msi /quiet /norestart
+  
+  # PAC Auth - Connects to the Power Platform environment
+  # $pacCommand = "auth create --url ${{parameters.serviceConnectionUrl}} --applicationId $(devConnectionVariables.BuildTools.ApplicationId) --clientSecret $(devConnectionVariables.BuildTools.ClientSecret) --tenant $(devConnectionVariables.BuildTools.TenantId)"
+  - pwsh: |  
+      $pacCommand = "auth create --environment ${{parameters.environmentGuid}} --applicationId $(devConnectionVariables.BuildTools.ApplicationId) --clientSecret $(devConnectionVariables.BuildTools.ClientSecret) --tenant $(devConnectionVariables.BuildTools.TenantId)"
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+
+    displayName: 'PAC Auth'
+  
+  # PAC Canvas - Print all msapp files in canvas app folder
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*.msapp'
+      Write-Host "All Package File Names are"
+      Write-Host "$file"
+      Write-Host "#################"
+      Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*.msapp'
+
+    displayName: 'Print all msapp files in canvas app folder'
+
+  # PAC Canvas - Component - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_one)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_one_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_one_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_one) and its details are $(canvas_app_details_one)'
+
+  # PAC Canvas - Command Bar - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_two)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_two_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_two_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_two) and its details are $(canvas_app_details_two)'
+
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_three)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_three_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_three_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_three) and its details are $(canvas_app_details_three)'
+    
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_four)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_four_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_four_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_four) and its details are $(canvas_app_details_four)'
+    
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_five)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_five_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_five_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_five) and its details are $(canvas_app_details_five)'
+
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_six)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_six_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_six_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_six) and its details are $(canvas_app_details_six)'
+     
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_seven)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_seven_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_seven_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_seven) and its details are $(canvas_app_details_seven)'
+
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_eight)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_eight_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_eight_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_eight) and its details are $(canvas_app_details_eight)'
+
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_nine)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_nine_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_nine_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_nine) and its details are $(canvas_app_details_nine)'
+    
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_ten)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_ten_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_ten_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_ten) and its details are $(canvas_app_details_ten)'
+    
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_eleven)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_eleven_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_eleven_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_eleven) and its details are $(canvas_app_details_eleven)'
+    
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_twelve)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_twelve_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_twelve_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_twelve) and its details are $(canvas_app_details_twelve)'
+       
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_thirteen)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_thirteen_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_thirteen_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_thirteen) and its details are $(canvas_app_details_thirteen)'
+
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_forteen)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_forteen_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_forteen_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_forteen) and its details are $(canvas_app_details_forteen)'
+
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_fifteen)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_fifteen_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_fifteen_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_fifteen) and its details are $(canvas_app_details_fifteen)'
+    
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_sixteen)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_sixteen_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_sixteen_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_sixteen) and its details are $(canvas_app_details_sixteen)'
+     
+  # PAC Canvas - Unpack 
+  - pwsh: |
+      $file = Get-ChildItem -Path '$(canvas_app_maspp_package_location)\' -recurse -Filter '*$(canvas_app_name_seventeen)*.msapp'
+      Write-Host "Package File Name for $(canvas_app_name_seventeen_friendlyname) is - $file"
+  
+      $pacCommand = "canvas unpack --msapp '$file' --sources '$(canvas_app_folder)\$(canvas_app_name_seventeen_friendlyname)' "
+      Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+   
+      Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+   
+    displayName: 'PAC Canvas Unpack $(canvas_app_name_seventeen) and its details are $(canvas_app_details_seventeen)'
+
+    ##
+      #- task: PowerPlatformDownloadPaportal@2
+      #  inputs:
+      #    authenticationType: 'PowerPlatformSPN'
+      #    PowerPlatformSPN: 'CRM-TEST-ServiceConnection'
+      #    DownloadPath: 'c:\'
+      #    WebsiteId: 'ewq-eqwe-eqe'
+      #    Overwrite: true
+      #    ModelVersion: 'cxcxc'      
+      
+      
+#- task: CopyFiles@2
+#  displayName: 'Copy Extracted Portal Files to: $(Build.SourcesDirectory)\SoluionItems\Portal\Schema\ For Git Checkin'
+#  inputs:
+#    SourceFolder: '$(Build.StagingDirectory)\SolutionDrop\Schema'
+#    Contents: '**'
+#    TargetFolder: '$(Build.SourcesDirectory)\SoluionItems\Portal\Schema\'
+#    #CleanTargetFolder: true
+#    OverWrite: true
+#    #retryCount: '1'
