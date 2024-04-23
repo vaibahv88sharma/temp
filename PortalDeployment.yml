@@ -1,0 +1,149 @@
+variables:
+  cmEnvironmentConnectionName: 'CRM-NPD-ServiceConnection' ##'CRM-NPD-ServiceConnection' ##  'CRM-TEST-ServiceConnection'
+  testEnvironmentConnectionName: 'CRM-TEST-ServiceConnection' 
+  #solutionNameD365Master: "D365Master"
+  #solutionNamePortalCli: "PortalCli"
+  notifyUsersEmail: '["vaibhav88sharma@hotmail.com"]'
+
+trigger: none
+
+pool:
+  vmImage: windows-latest
+  demands:
+  - npm
+  - msbuild
+  - visualstudio
+
+parameters:
+  - name: "comments"
+    displayName: "Check-in Comments"
+    type: string
+  #- name: "maxAsyncWaitTime"
+  #  displayName: "Max Wait Time for Agent"
+  #  type: string
+  #  default: 60
+  #  values:
+  #  - 60
+  #  - 120
+  #  - 180
+  #  - 360
+  #- name: "d365master"
+  #  displayName: "D365 Master"
+  #  type: boolean
+  #  default: true
+  - name: "portalcli"
+    displayName: "Portal Cli"
+    type: boolean
+    default: true
+
+stages:
+#######################################
+#
+# - Build Stage
+#
+#######################################
+
+- stage: BuildSolutions
+  displayName: "Build Solutions"  
+  variables:
+  - template: Templates/Variables.yml
+  jobs:
+   - job: Build_Dev
+     displayName: "Build and create Packages"
+     steps:
+     # checkout: self => This specifies that the pipeline should checkout the source code from the same repository that the pipeline is defined in.
+     # fetchDepth: 1 => This tells the pipeline to fetch only the latest changeset from the repository.
+     # persistCredentials: True => This ensures that the credentials used to trigger the pipeline are persisted and used for subsequent steps.
+      - checkout: self
+        fetchDepth: 0
+        fetchTags: true
+        persistCredentials: true
+        displayName: "Checkout Self"
+
+        
+      - task: CmdLine@2
+        displayName: "Git Checkout Repo - $(Build.SourceBranchName)"
+        inputs:
+          script: |
+            echo commit changes      
+            git config user.name "$(Build.RequestedFor)"
+            git config user.email "$(Build.RequestedForEmail)"
+
+            # Git failed with a fatal error. Filename too long. fatal: Unable to process path => Filename too long in Git for Windows
+            git config --system core.longpaths true
+
+            echo git version ---
+            git version 
+            echo cd System.DefaultWorkingDirectory -- $(System.DefaultWorkingDirectory) ---
+            echo cd Build.SourcesDirectory -- $(Build.SourcesDirectory) ---
+            git checkout $(Build.SourceBranchName) --progress 
+    
+      - task: PowerPlatformToolInstaller@2
+        displayName: "Install Power Platform Tool"
+        inputs:
+          DefaultVersion: true
+
+      # PAC Model Builder - Delete content of outputfolder and Execute mopdelbuilder statement 
+      #- pwsh: |
+       
+      #    Get-ChildItem -Path ${{parameters.outdirectory}} -Include *.* -File -Recurse | foreach { $_.Delete()}
+      #    write-host "Content of ${{parameters.outdirectory}} Deleted.." -BackgroundColor Green -ForegroundColor Black
+      
+      #    $pacCommand = "modelbuilder build --outdirectory ${{parameters.outdirectory}} --settingsTemplateFile ${{parameters.settingsTemplateFilePath}}"
+      #    Write-Host "Pac command - $(PACEXEPATH) $pacCommand"
+       
+      #    Invoke-Expression -Command "$(PACEXEPATH) $pacCommand"   
+      #  displayName: 'PAC Modelbuilder'
+      - template : Templates/ExportPortal.yml
+        parameters:
+          portalcli: ${{ parameters.portalcli }}
+          environmentconnection: $(cmEnvironmentConnectionName)
+          environmentname: 'Dev'
+          portalWebSiteId: $(portal_WebSiteId)
+          # serviceConnectionUrl:  $(serviceConnectionUrl_dev)
+          environmentGuid: $(environmentGuid_dev)
+
+      - task: CmdLine@2
+        displayName: "Git Push into Repo - $(Build.SourceBranchName)"
+        inputs:
+          script: |
+            git add --all
+            git commit -m "${{ parameters.comments }}"
+            echo push code to repo
+            git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin $(Build.SourceBranchName)
+            
+#######################################
+#
+# - Deploy Test Solutions Stage
+#
+#######################################
+
+- stage: ImportPortalConfig
+  displayName: "Import Portal Config"  
+  variables:
+  - template: Templates/Variables.yml
+  dependsOn: BuildSolutions
+  jobs:
+  - deployment: Import_PortalConfig
+    displayName: "Import Portal Config To Target"
+    environment: 'Test' 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+           - task: PowerPlatformToolInstaller@2
+             displayName: "Install Power Platform Tool"
+             inputs:
+                DefaultVersion: true                     
+           - template : Templates/ImportPortal.yml
+             parameters:
+               portalcli: ${{ parameters.portalcli }}
+               portalWebSiteId: $(portal_WebSiteId)
+               # serviceConnectionUrl:  $(serviceConnectionUrl_test)
+               environmentGuid: $(environmentGuid_test)
+               environmentconnection: $(testEnvironmentConnectionName)
+               environmentname: 'Test'
+               deploymentProfileName : 'test' 
+               droppath: '$(Pipeline.Workspace)\SolutionDrop'
+               #droppath: '$(Build.StagingDirectory)\SolutionDrop'
+               #droppath: '$(Build.SourcesDirectory)\SolutionsZipFiles\'

@@ -1,0 +1,81 @@
+variables:
+  testEnvironmentConnectionName: 'CRM-TEST-ServiceConnection' ##'TestConnection'
+  solutionNameD365Master: "D365Master"
+  solutionNamePortalCli: "PortalCli"
+  notifyUsersEmail: '["vaibhav88sharma@hotmail.com"]'
+
+trigger: none
+
+pool:
+  vmImage: windows-latest
+  demands:
+  - npm
+  - msbuild
+  - visualstudio
+
+parameters:
+  - name: "d365masterData"
+    displayName: "D365 Master Data Export"
+    type: boolean
+    default: false
+  - name: "portalcliData"
+    displayName: "Portal Cli Data Export"
+    type: boolean
+    default: false
+stages:
+#######################################
+#
+# - Deploy Test Solutions Stage
+#
+#######################################
+
+- stage: ImportData
+  displayName: "Import Data"
+  variables:
+  - template: Templates/Variables.yml
+  jobs:
+  - deployment: Import_Data
+    displayName: "Import Data To Target"
+    environment: 'Test' 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+            # checkout: self => This specifies that the pipeline should checkout the source code from the same repository that the pipeline is defined in.
+            # fetchDepth: 1 => This tells the pipeline to fetch only the latest changeset from the repository.
+            # persistCredentials: True => This ensures that the credentials used to trigger the pipeline are persisted and used for subsequent steps.
+           - checkout: self
+             fetchDepth: 0
+             fetchTags: true
+             persistCredentials: true
+             displayName: "Checkout Self"
+
+           - task: CmdLine@2
+             displayName: "Git Checkout Repo - $(Build.SourceBranchName)"
+             inputs:
+               script: |
+                 echo commit changes      
+                 git config user.name "$(Build.RequestedFor)"
+                 git config user.email "$(Build.RequestedForEmail)"
+                 echo git version ---
+                 git version 
+                 echo cd System.DefaultWorkingDirectory -- $(System.DefaultWorkingDirectory) ---
+                 echo cd Build.SourcesDirectory -- $(Build.SourcesDirectory) ---
+                 git checkout $(Build.SourceBranchName) --progress 
+
+           - task: PowerPlatformToolInstaller@2
+             displayName: "Install Power Platform Tool"
+             inputs:
+                DefaultVersion: true                     
+
+           - template : Templates/ImportData.yml
+             parameters:
+               d365masterData: ${{ parameters.d365masterData }}
+               portalcliData: ${{ parameters.portalcliData }}
+               environmentconnection: $(testEnvironmentConnectionName)
+               environmentname: 'Test'
+               solutionNameD365Master: $(solutionNameD365Master)
+               solutionNamePortalCli: $(solutionNamePortalCli)
+               droppath: $(data_import_dataFile)
+               serviceConnectionUrl:  $(serviceConnectionUrl_test)

@@ -1,0 +1,197 @@
+variables:
+  cmEnvironmentConnectionName: 'CRM-NPD-ServiceConnection'
+  testEnvironmentConnectionName: 'CRM-TEST-ServiceConnection'
+  uatEnvironmentConnectionName: 'CRM-UAT-ServiceConnection'
+  preprodEnvironmentConnectionName: 'CRM-PPR-ServiceConnection'
+  prodEnvironmentConnectionName: 'CRM-PRP-AUE-ServiceConnection'
+  solutionNameWebResource: "TACustomer36010WebResources"
+  solutionNameCustomisation: "TACustomer36020Customisation"
+  solutionNameSecurityRoles: "TACustomer36030SecurityRoles"
+  solutionNamePlugins: "TACustomer36040Plugins"
+  solutionNameFlows: "TACustomer36050Flows"
+  notifyUsersEmail: '["vaibhav.sharma@Tennis.com.au"]'
+
+trigger: none
+
+pool:
+  vmImage: windows-latest
+  demands:
+  - npm
+  - msbuild
+  - visualstudio
+
+
+stages:
+
+#######################################
+#
+# - Deploy ConfigData Test Solutions Stage
+#
+#######################################
+
+#- stage: DeployConfigDataTest_Solutions
+#  displayName: "Delpoy ConfigData to Test"  
+#  jobs:      
+#  - deployment: DeployDataToTest
+#    displayName: "Deploy Data To Test"
+#    environment: 'C360-Test'
+#    strategy:
+#      runOnce:
+#        deploy:
+#          steps:
+#           - task: PowerPlatformToolInstaller@0
+#             displayName: "Install Power Platform Tool for Test Env"
+#             inputs:
+#                DefaultVersion: true                     
+#           - task: PowerPlatformDeployPackage@0
+#             displayName: "Run Config Data Package to Test Env"
+#             inputs:
+#               authenticationType: 'PowerPlatformSPN'
+#               PowerPlatformSPN: '$(testEnvironmentConnectionName)'
+#               #PackageFile: '$(Build.SourcesDirectory)\Data\ConfigData\ConfigDataPackage\Output\ConfigDataPackage.dll'
+#               PackageFile: '$(Build.StagingDirectory)\Data\ConfigData\ConfigDataPackage\Output\ConfigDataPackage.dll'
+
+
+- stage: DeployConfigDataTest_Solutions
+  displayName: "Delpoy ConfigData to Test"  
+  jobs:
+
+  - job: waitForValidation
+    displayName: "Wait for external validation"  
+    pool: server    
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:   
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+          notifyUsers: $(notifyUsersEmail)
+          instructions: 'Please validate the build configuration and resume'
+          onTimeout: 'reject'
+
+  - job: TestEnvironment_ConfigDataDelpoyment
+    displayName: "Test Environment ConfigData Delpoyment"
+    dependsOn: waitForValidation
+    steps:
+     - task: PowerPlatformToolInstaller@0
+       displayName: "Install Power Platform Tool"
+       inputs:
+         DefaultVersion: true
+     - task: PowerPlatformDeployPackage@0
+       displayName: "Run Config Data Package"
+       inputs:
+         authenticationType: 'PowerPlatformSPN'
+         PowerPlatformSPN: '$(testEnvironmentConnectionName)'
+         PackageFile: '$(Build.SourcesDirectory)\Data\ConfigData\ConfigDataPackage\Output\ConfigDataPackage.dll'
+
+
+#######################################
+#
+# - Deploy ConfigData UAT Solutions Stage
+#
+#######################################
+
+- stage: DeployConfigDataUAT_Solutions
+  displayName: "Delpoy ConfigData to UAT"  
+  jobs:
+
+  - job: waitForValidation
+    displayName: "Wait for external validation"  
+    pool: server    
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:   
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+          notifyUsers: $(notifyUsersEmail)
+          instructions: 'Please validate the build configuration and resume'
+          onTimeout: 'reject'
+
+  - job: UATEnvironment_ConfigDataDelpoyment
+    displayName: "UAT Environment ConfigData Delpoyment"
+    dependsOn: waitForValidation
+    steps:
+     - task: PowerPlatformToolInstaller@0
+       displayName: "Install Power Platform Tool"
+       inputs:
+         DefaultVersion: true
+     - task: PowerPlatformDeployPackage@0
+       displayName: "Run Config Data Package"
+       inputs:
+         authenticationType: 'PowerPlatformSPN'
+         PowerPlatformSPN: '$(uatEnvironmentConnectionName)'
+         PackageFile: '$(Build.SourcesDirectory)\Data\ConfigData\ConfigDataPackage\Output\ConfigDataPackage.dll'
+
+
+#######################################
+#
+# - Deploy ConfigData Pre-Prod Solutions Stage
+#
+#######################################
+
+- stage: DeployConfigDataPreProd_Solutions
+  displayName: "Delpoy ConfigData to PreProd"  
+  jobs:
+
+  - job: waitForValidation
+    displayName: "Wait for external validation"  
+    pool: server    
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:   
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+          notifyUsers: $(notifyUsersEmail)
+          instructions: 'Please validate the build configuration and resume'
+          onTimeout: 'reject'
+
+  - job: PreProdEnvironment_ConfigDataDelpoyment
+    displayName: "PreProd Environment ConfigData Delpoyment"
+    dependsOn: waitForValidation
+    steps:
+     - task: PowerPlatformToolInstaller@0
+       displayName: "Install Power Platform Tool"
+       inputs:
+         DefaultVersion: true
+     - task: PowerPlatformDeployPackage@0
+       displayName: "Run Config Data Package"
+       inputs:
+         authenticationType: 'PowerPlatformSPN'
+         PowerPlatformSPN: '$(preprodEnvironmentConnectionName)'
+         PackageFile: '$(Build.SourcesDirectory)\Data\ConfigData\ConfigDataPackage\Output\ConfigDataPackage.dll'
+         
+#######################################
+#
+# - Deploy ConfigData Prod Solutions Stage
+#
+#######################################
+
+- stage: DeployConfigDataProd_Solutions
+  displayName: "Delpoy ConfigData to Prod"  
+  jobs:
+
+  - job: waitForValidation
+    displayName: "Wait for external validation"  
+    pool: server    
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:   
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+          notifyUsers: $(notifyUsersEmail)
+          instructions: 'Please validate the build configuration and resume'
+          onTimeout: 'reject'
+
+  - job: ProdEnvironment_ConfigDataDelpoyment
+    displayName: "Prod Environment ConfigData Delpoyment"
+    dependsOn: waitForValidation
+    steps:
+     - task: PowerPlatformToolInstaller@0
+       displayName: "Install Power Platform Tool"
+       inputs:
+         DefaultVersion: true
+     - task: PowerPlatformDeployPackage@0
+       displayName: "Run Config Data Package"
+       inputs:
+         authenticationType: 'PowerPlatformSPN'
+         PowerPlatformSPN: '$(prodEnvironmentConnectionName)'
+         PackageFile: '$(Build.SourcesDirectory)\Data\ConfigData\ConfigDataPackage\Output\ConfigDataPackage.dll'

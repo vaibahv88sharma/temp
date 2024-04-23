@@ -1,0 +1,209 @@
+variables:
+  cmEnvironmentConnectionName: 'CRM-NPD-ServiceConnection' # 'CRM-NPD-ServiceConnection' ##'DevConnection'
+  testEnvironmentConnectionName: 'CRM-TEST-ServiceConnection' ##'TestConnection'
+  solutionNameD365Master: "D365Master"
+  solutionNamePortalCli: "PortalCli"
+  notifyUsersEmail: '["vaibhav88sharma@hotmail.com"]'
+
+trigger: none
+
+pool:
+  vmImage: windows-latest
+  demands:
+  - npm
+  - msbuild
+  - visualstudio
+
+parameters:
+  - name: "comments"
+    displayName: "Check-in Comments"
+    type: string
+  #- name: "maxAsyncWaitTime"
+  #  displayName: "Max Wait Time for Agent"
+  #  type: string
+  #  default: 60
+  #  values:
+  #  - 60
+  #  - 120
+  #  - 180
+  #  - 360
+  - name: "d365master"
+    displayName: "D365 Master"
+    type: boolean
+    default: true
+  - name: "portalcli"
+    displayName: "Portal Cli"
+    type: boolean
+    default: true
+  - name: "exportcanvasapps"
+    displayName: "ExportCanvasApps"
+    type: boolean
+    default: true
+  - name: "asyncOperation"
+    displayName: "Async Operation"
+    type: boolean
+    default: true
+  - name: "publishSourceAndTargetEnv"
+    displayName: "Publish Source/Target Env"
+    type: boolean
+    default: false
+stages:
+#######################################
+#
+# - Build Stage
+#
+#######################################
+
+- stage: BuildSolutions
+  displayName: "Build Solutions"
+  variables:
+  - template: Templates/Variables.yml
+  jobs:
+   - job: Build_Dev
+     displayName: "Build and create Packages"
+     steps:
+     # checkout: self => This specifies that the pipeline should checkout the source code from the same repository that the pipeline is defined in.
+     # fetchDepth: 1 => This tells the pipeline to fetch only the latest changeset from the repository.
+     # persistCredentials: True => This ensures that the credentials used to trigger the pipeline are persisted and used for subsequent steps.
+      - checkout: self
+        fetchDepth: 0
+        fetchTags: true
+        persistCredentials: true
+        displayName: "Checkout Self"
+
+      # - bash: |
+      #     echo main branch, exit.
+      #     exit 1
+      #   displayName: 'Check if $(Build.SourceBranchName) is master'
+      #   condition: eq(variables['Build.SourceBranchName'], 'master')
+        
+      - task: CmdLine@2
+        displayName: "Git Checkout Repo - $(Build.SourceBranchName)"
+        inputs:
+          script: |
+            echo commit changes      
+            git config user.name "$(Build.RequestedFor)"
+            git config user.email "$(Build.RequestedForEmail)"
+            echo git version ---
+            git version 
+            echo cd System.DefaultWorkingDirectory -- $(System.DefaultWorkingDirectory) ---
+            echo cd Build.SourcesDirectory -- $(Build.SourcesDirectory) ---
+            git checkout $(Build.SourceBranchName) --progress 
+    
+      - task: PowerPlatformToolInstaller@2
+        displayName: "Install Power Platform Tool"
+        inputs:
+          DefaultVersion: true
+
+      - template : Templates/ExportSolutions.yml
+        parameters:
+          d365master: ${{ parameters.d365master }}
+          portalcli: ${{ parameters.portalcli }}
+          solutionVersionPrefix: $(solutionVersionPrefix)
+          publishSourceAndTargetEnv: ${{ parameters.publishSourceAndTargetEnv }}
+          environmentconnection: $(cmEnvironmentConnectionName)
+          environmentname: 'Dev'
+          managed: false
+          solutionNameD365Master:  $(solutionName_D365Master)
+          solutionNamePortalCli: $(solutionName_PortalCli)
+          solutionOutputFile: $(drop_file_location)
+
+      - template : Templates/UnpackSolutions.yml
+        parameters:
+          d365master: ${{ parameters.d365master }}
+          portalcli: ${{ parameters.portalcli }}
+          solutionNameD365Master:  $(solutionName_D365Master)
+          solutionNamePortalCli: $(solutionName_PortalCli)
+          solutionTargetFolder: $(solution_source_folder)
+          
+      - template : Templates/UnpackCanvasApps.yml
+        parameters:
+          d365master: ${{ parameters.d365master }}
+          portalcli: ${{ parameters.portalcli }}
+          exportcanvasapps: ${{ parameters.exportcanvasapps }}
+          solutionNameD365Master:  $(solutionName_D365Master)
+          solutionNamePortalCli: $(solutionName_PortalCli)
+          environmentconnection: $(cmEnvironmentConnectionName)
+          # serviceConnectionName: $(cmEnvironmentConnectionName)
+          # serviceConnectionName: $(serviceConnectionName_dev)
+          # serviceConnectionUrl: $(serviceConnectionUrl_dev)
+          environmentGuid: $(environmentGuid_dev)
+
+      - task: CmdLine@2
+        displayName: "Git Push into Repo - $(Build.SourceBranchName)"
+        inputs:
+          script: |
+            git add --all
+            git commit -m "${{ parameters.comments }}"
+            echo push code to repo
+            git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin $(Build.SourceBranchName)
+            
+      - template : Templates/PackSolutions.yml
+        parameters:
+          d365master: ${{ parameters.d365master }}
+          portalcli: ${{ parameters.portalcli }}
+          solutionNameD365Master:  $(solutionName_D365Master)
+          solutionNamePortalCli: $(solutionName_PortalCli)
+          solutionOutputFile: $(drop_file_location)
+
+
+#######################################
+#
+# - Deploy Test Solutions Stage
+#
+#######################################
+
+- stage: DeployTest_Solutions
+  displayName: "Delpoy to Test"  
+  variables:
+  - template: Templates/Variables.yml
+  dependsOn: BuildSolutions
+  jobs:
+  - deployment: DeployToTest
+    displayName: "Deploy To Test"
+    environment: 'Test' 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            # checkout: self => This specifies that the pipeline should checkout the source code from the same repository that the pipeline is defined in.
+            # fetchDepth: 1 => This tells the pipeline to fetch only the latest changeset from the repository.
+            # persistCredentials: True => This ensures that the credentials used to trigger the pipeline are persisted and used for subsequent steps.
+           - checkout: self
+             fetchDepth: 0
+             fetchTags: true
+             persistCredentials: true
+             displayName: "Checkout Self"
+
+           - task: CmdLine@2
+             displayName: "Git Checkout Repo - master" # master , $(Build.SourceBranchName)
+             inputs:
+               script: |
+                 echo commit changes      
+                 git config user.name "$(Build.RequestedFor)"
+                 git config user.email "$(Build.RequestedForEmail)"
+                 echo git version ---
+                 git version 
+                 echo cd System.DefaultWorkingDirectory -- $(System.DefaultWorkingDirectory) ---
+                 echo cd Build.SourcesDirectory -- $(Build.SourcesDirectory) ---
+                 # git checkout $(Build.SourceBranchName) --progress 
+                 git checkout master --progress 
+
+           - task: PowerPlatformToolInstaller@2
+             displayName: "Install Power Platform Tool"
+             inputs:
+                DefaultVersion: true                     
+           - template : Templates/ImportSolutions.yml
+             parameters:
+              d365master: ${{ parameters.d365master }}
+              portalcli: ${{ parameters.portalcli }}
+              publishSourceAndTargetEnv: ${{ parameters.publishSourceAndTargetEnv }}
+              environmentconnection: $(testEnvironmentConnectionName)
+              environmentname: 'test'
+              droppath: $(droppath)
+              solutionNameD365Master:  $(solutionName_D365Master)
+              solutionNamePortalCli: $(solutionName_PortalCli)
+              asyncOperation: ${{ parameters.asyncOperation }}
+              #maxAsyncWaitTime: ${{ parameters.maxAsyncWaitTime }}
+              solutionDeploymentSettingsFile: $(solutionDeploymentSettingsFile)
+              datetimeStampPipelineStartTime: $(datetimeStampPipelineStartTime)
